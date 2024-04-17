@@ -54,8 +54,6 @@ if arquivo_selecionado:
     sns.histplot(data[data.columns[0]], ax=ax, kde=True)
     st.pyplot(fig)
 
-import streamlit as st
-
 # Título do aplicativo
 st.title("Lista de Sensores")
 

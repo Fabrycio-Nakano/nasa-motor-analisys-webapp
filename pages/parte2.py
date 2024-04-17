@@ -1,60 +1,47 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+import matplotlib.pyplot as plt
+import seaborn as sns; sns.set()
 
-# Caminho base onde os datasets estão armazenados
+# Definição das variáveis essenciais para a leitura dos dados
 caminho_diretorio = 'https://raw.githubusercontent.com/andressaapio/nasa_dataset/main/CMAPSSData/'
+indices_lista = ['motor', 'ciclo_tempo']
+configuracao_lista = ['config_1', 'config_2', 'config_3']
+sensores_lista = [f'sensor_{n}' for n in range(1, 22)]
+colunas = indices_lista + configuracao_lista + sensores_lista
 
-
-
-# Função para preparar o y_test alinhado ao X_test
-def preparar_y_test(dados_teste, dados_rul):
-    # Identificar o último ciclo de cada motor em dados_teste
-    ultimo_ciclo = dados_teste.groupby('motor').max().reset_index()[['motor', 'ciclo_tempo']]
-    # Mesclar com os dados_rul para alinhar o RUL com o último ciclo de cada motor
-    y_test_preparado = pd.merge(ultimo_ciclo, dados_rul, on='motor', how='left')
-    return y_test_preparado['RUL']
-
-# Definindo uma função para carregar dados
+# Função para carregar os dados usando cache para melhor performance
 @st.cache
-def carregar_dados(nome_arquivo):
-    colunas = ['motor', 'ciclo_tempo', 'config_1', 'config_2', 'config_3'] + [f'sensor_{n}' for n in range(1, 22)]
-    url = caminho_diretorio + nome_arquivo
-    data = pd.read_csv(url, sep='\\s+', header=None, names=colunas)
-    return data
+def carregar_dados():
+    treino = pd.read_csv(caminho_diretorio+'train_FD001.txt', sep='\s+', header=None, names=colunas)
+    return treino
 
-# Carregar datasets
-dados_treino = carregar_dados('train_FD001.txt')
-dados_teste = carregar_dados('test_FD001.txt')
-dados_rul = carregar_dados('RUL_FD001.txt')
+treino = carregar_dados()
 
-# Preparar os dados (simplificação para exemplo)
-X_train = dados_treino.iloc[:, 2:]  # Excluindo identificadores
-y_train = dados_treino['ciclo_tempo']
-X_test = dados_teste.iloc[:, 2:]
-y_test = dados_rul.iloc[:, 0]  # RUL real
+# Título da página
+st.title('Análise Detalhada de Manutenção Preditiva de Motores')
 
-# Construindo e treinando o modelo
-@st.cache(allow_output_mutation=True)
-def treinar_modelo(X, y):
-    modelo = RandomForestRegressor(n_estimators=100)
-    modelo.fit(X, y)
-    return modelo
+# Estatísticas descritivas
+st.header('Estatísticas Descritivas dos Dados')
+st.write('Estatísticas descritivas do dataset:')
+st.dataframe(treino.describe())
 
-modelo = treinar_modelo(X_train, y_train)
+# Visualização da transposição de estatísticas descritivas para sensores
+st.write('Estatísticas descritivas transpostas para os sensores:')
+st.dataframe(treino[sensores_lista].describe().transpose())
 
-# Fazendo previsões
-predicoes = modelo.predict(X_test)
+# Heatmap de correlação
+st.header('Heatmap de Correlação dos Dados')
+fig, ax = plt.subplots(figsize=(15, 10))
+corrmat = treino.corr()
+sns.heatmap(corrmat, cmap="RdBu_r", ax=ax)
+st.pyplot(fig)
 
-# Métricas de desempenho
-mse = mean_squared_error(y_test, predicoes)
-r2 = r2_score(y_test, predicoes)
-mae = mean_absolute_error(y_test, predicoes)
-
-# Mostrar os resultados no app
-st.write("Métricas de Desempenho do Modelo:")
-st.write(f"MSE: {mse}")
-st.write(f"R2: {r2}")
-st.write(f"MAE: {mae}")
+# Gráficos de distribuição para algumas colunas
+st.header('Gráficos de Distribuição para Colunas Selecionadas')
+colunas_selecionadas = st.multiselect('Selecione colunas para visualizar distribuição', treino.columns, default=['sensor_1', 'sensor_2'])
+for coluna in colunas_selecionadas:
+    fig, ax = plt.subplots()
+    sns.histplot(treino[coluna], kde=True, ax=ax)
+    st.pyplot(fig)

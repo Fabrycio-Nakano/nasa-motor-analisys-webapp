@@ -1,29 +1,42 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns; sns.set()
 
-# Caminho base onde os datasets estão armazenados
-caminho_diretorio = 'https://raw.githubusercontent.com/andressaapio/nasa_dataset/main/CMAPSSData/'
+# Título da página
+st.title('Análise de Manutenção Preditiva de Motores')
 
-# Nome dos arquivos dos datasets
-datasets = {
-    'Treino': 'train_FD001.txt',
-    'Teste': 'test_FD001.txt',
-    'RUL': 'RUL_FD001.txt'
-}
+# definição do caminho dos arquivos para ler os dados
+caminho_diretorio = 'https://raw.githubusercontent.com/andressaapio/nasa_dataset/main/CMAPSSData/' 
 
-# Escolha do dataset pelo usuário
-opcao_dataset = st.sidebar.selectbox('Escolha o dataset:', list(datasets.keys()))
+# definição dos nomes das colunas para os índices
+indices_lista = ['motor', 'ciclo_tempo']
+configuracao_lista = ['config_1', 'config_2', 'config_3']
 
-# Carregar o dataset selecionado
-@st.cache
-def carregar_dados(nome_arquivo):
-    colunas = ['motor', 'ciclo_tempo', 'config_1', 'config_2', 'config_3'] + [f'sensor_{n}' for n in range(1, 22)]
-    url = caminho_diretorio + nome_arquivo
-    data = pd.read_csv(url, sep='\\s+', header=None, names=colunas)
-    return data
+# para não precisar escrever o nome dos 21 sensores, vamos utilizar o loop for
+sensores_lista = []
+for n in range(1, 22):
+    sensores_lista.append(f'sensor_{n}')
 
-dados = carregar_dados(datasets[opcao_dataset])
+colunas = indices_lista + configuracao_lista + sensores_lista
 
-# Mostrar os dados no app
-st.write(f'Dataset escolhido: {opcao_dataset}')
-st.write(dados.head())
+treino = pd.read_csv(caminho_diretorio+'train_FD001.txt', sep='\s+', header=None, names=colunas)
+
+# Visualização de dados básicos usando Streamlit
+st.header('Visualização dos Dados de Treino')
+st.write('Visualização das primeiras 5 linhas dos dados de treino:')
+st.dataframe(treino.head())
+
+st.write('Visualização das últimas 5 linhas dos dados de treino:')
+st.dataframe(treino.tail())
+
+st.write('Médias das colunas dos dados de treino:')
+st.dataframe(treino.mean())
+
+# Gráfico de um sensor específico
+st.header('Gráfico de um Sensor Específico')
+sensor_escolhido = st.selectbox('Escolha um sensor para visualizar', sensores_lista)
+st.line_chart(treino[sensor_escolhido])
+
+# Executar: streamlit run seu_script.py
